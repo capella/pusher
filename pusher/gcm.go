@@ -95,9 +95,6 @@ func (g *GCMPusher) configure(client interfaces.GCMClient, db interfaces.DB, sta
 	if err = g.configureFeedbackReporters(); err != nil {
 		return err
 	}
-	if err = g.configureInvalidTokenHandlers(db); err != nil {
-		return err
-	}
 	q, err := extensions.NewKafkaConsumer(
 		g.Config,
 		g.Logger,
@@ -153,15 +150,6 @@ func (g *GCMPusher) configureFeedbackReporters() error {
 	return nil
 }
 
-func (g *GCMPusher) configureInvalidTokenHandlers(dbOrNil interfaces.DB) error {
-	invalidTokenHandlers, err := configureInvalidTokenHandlers(g.Config, g.Logger, dbOrNil)
-	if err != nil {
-		return err
-	}
-	g.InvalidTokenHandlers = invalidTokenHandlers
-	return nil
-}
-
 func (g *GCMPusher) routeMessages(msgChan *chan interfaces.KafkaMessage) {
 	for g.run == true {
 		select {
@@ -196,7 +184,7 @@ func (g *GCMPusher) Start() {
 	go g.Queue.ConsumeLoop()
 	go g.reportGoStats()
 
-	sigchan := make(chan os.Signal)
+	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
 	for g.run == true {

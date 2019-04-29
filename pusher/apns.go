@@ -95,9 +95,6 @@ func (a *APNSPusher) configure(queue interfaces.APNSPushQueue, db interfaces.DB,
 	if err = a.configureFeedbackReporters(); err != nil {
 		return err
 	}
-	if err = a.configureInvalidTokenHandlers(db); err != nil {
-		return err
-	}
 	q, err := extensions.NewKafkaConsumer(
 		a.Config,
 		a.Logger,
@@ -159,15 +156,6 @@ func (a *APNSPusher) configureStatsReporters(clientOrNil interfaces.StatsDClient
 	return nil
 }
 
-func (a *APNSPusher) configureInvalidTokenHandlers(dbOrNil interfaces.DB) error {
-	invalidTokenHandlers, err := configureInvalidTokenHandlers(a.Config, a.Logger, dbOrNil)
-	if err != nil {
-		return err
-	}
-	a.InvalidTokenHandlers = invalidTokenHandlers
-	return nil
-}
-
 func (a *APNSPusher) routeMessages(msgChan *chan interfaces.KafkaMessage) {
 	for a.run == true {
 		select {
@@ -202,7 +190,7 @@ func (a *APNSPusher) Start() {
 	go a.Queue.ConsumeLoop()
 	go a.reportGoStats()
 
-	sigchan := make(chan os.Signal)
+	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	for a.run == true {
